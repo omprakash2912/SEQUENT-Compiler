@@ -1,0 +1,7 @@
+system TemporalErrorDemo {
+
+    state active = false
+    event EmergencyDetected
+
+    constraint EmergencyDetected -> UnknownEvent within 5s
+}

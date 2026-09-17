@@ -1,0 +1,9 @@
+system SemanticErrorDemo {
+
+    state active = true
+    event EmergencyDetected
+
+    on EmergencyDetected {
+        unknownState = true
+    }
+}

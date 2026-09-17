@@ -1,0 +1,9 @@
+system TypeErrorDemo {
+
+    state active = false
+    event EmergencyDetected
+
+    on EmergencyDetected {
+        active = "YES"
+    }
+}

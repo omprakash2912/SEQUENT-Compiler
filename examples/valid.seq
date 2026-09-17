@@ -1,0 +1,22 @@
+system EmergencyResponse {
+
+    state active = false
+    state team = "AVAILABLE"
+
+    event EmergencyDetected
+    event TeamDispatched
+    event IncidentResolved
+
+    on EmergencyDetected {
+        active = true
+        team = "DISPATCHED"
+    }
+
+    on IncidentResolved {
+        active = false
+        team = "AVAILABLE"
+    }
+
+    constraint EmergencyDetected -> TeamDispatched within 5s
+    constraint TeamDispatched -> IncidentResolved within 30m
+}

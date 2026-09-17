@@ -1,0 +1,8 @@
+system SyntaxErrorDemo {
+
+    state counter = 0
+    event Triggered
+
+    on Triggered {
+        counter = 1
+    // Syntax error: missing closing braces '}'
