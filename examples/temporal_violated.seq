@@ -1,0 +1,24 @@
+// SEQUENT Phase 2 - Temporal Constraint Violated Demonstration
+// EVENTS: EmergencyDetected@0ms, TeamDispatched@7200ms, IncidentResolved@8500ms
+system EmergencyResponseViolated {
+
+    state active = false
+    state team = "AVAILABLE"
+
+    event EmergencyDetected
+    event TeamDispatched
+    event IncidentResolved
+
+    on EmergencyDetected {
+        active = true
+        team = "DISPATCHED"
+    }
+
+    on IncidentResolved {
+        active = false
+        team = "AVAILABLE"
+    }
+
+    constraint EmergencyDetected -> TeamDispatched within 5s
+    constraint TeamDispatched -> IncidentResolved within 30m
+}

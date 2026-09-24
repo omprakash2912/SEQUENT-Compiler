@@ -1,0 +1,24 @@
+// SEQUENT Phase 2 - IR Optimization Demonstration
+// Demonstrates dead/redundant store elimination within handler blocks
+system OptimizationDemo {
+
+    state powerLevel = 0
+    state status = "IDLE"
+
+    event SystemBoot
+    event SystemShutdown
+
+    on SystemBoot {
+        powerLevel = 10
+        powerLevel = 50
+        powerLevel = 100
+        status = "BOOTING"
+        status = "OPERATIONAL"
+    }
+
+    on SystemShutdown {
+        status = "SHUTTING_DOWN"
+        powerLevel = 0
+        status = "OFF"
+    }
+}

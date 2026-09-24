@@ -1,0 +1,22 @@
+// SEQUENT Phase 2 - Event-Driven Execution Example
+// EVENTS: EmergencyDetected@0ms, IncidentResolved@4500ms
+system EmergencyExecution {
+
+    state active = false
+    state team = "AVAILABLE"
+
+    event EmergencyDetected
+    event IncidentResolved
+
+    on EmergencyDetected {
+        active = true
+        team = "DISPATCHED"
+    }
+
+    on IncidentResolved {
+        active = false
+        team = "AVAILABLE"
+    }
+
+    constraint EmergencyDetected -> IncidentResolved within 10s
+}
