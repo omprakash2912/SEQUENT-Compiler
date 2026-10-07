@@ -1,0 +1,205 @@
+{
+  "system": "BuildingManagement",
+  "simulation": {
+    "start_time_ms": 0,
+    "end_time_ms": 4000,
+    "duration_ms": 4000,
+    "total_events": 3,
+    "total_state_changes": 7
+  },
+  "initial_state": {
+    "gridActive": true,
+    "backupActive": false,
+    "powerLoad": 100
+  },
+  "final_state": {
+    "gridActive": true,
+    "backupActive": false,
+    "powerLoad": 100
+  },
+  "events": [
+    {
+      "event": "SensorAlert",
+      "timestamp_ms": 0,
+      "priority": 10,
+      "seq_id": 0,
+      "handler_executed": true,
+      "state_changes": [
+        {
+          "timestamp_ms": 0,
+          "event": "SensorAlert",
+          "variable": "gridActive",
+          "old_value": true,
+          "new_value": false
+        },
+        {
+          "timestamp_ms": 0,
+          "event": "SensorAlert",
+          "variable": "backupActive",
+          "old_value": false,
+          "new_value": true
+        },
+        {
+          "timestamp_ms": 0,
+          "event": "SensorAlert",
+          "variable": "powerLoad",
+          "old_value": 100,
+          "new_value": 50
+        }
+      ],
+      "temporal_checks": []
+    },
+    {
+      "event": "AuxiliaryPowerOnline",
+      "timestamp_ms": 1500,
+      "priority": 10,
+      "seq_id": 1,
+      "handler_executed": true,
+      "state_changes": [
+        {
+          "timestamp_ms": 1500,
+          "event": "AuxiliaryPowerOnline",
+          "variable": "powerLoad",
+          "old_value": 50,
+          "new_value": 80
+        }
+      ],
+      "temporal_checks": [
+        {
+          "source_event": "SensorAlert",
+          "target_event": "AuxiliaryPowerOnline",
+          "source_timestamp_ms": 0,
+          "target_timestamp_ms": 1500,
+          "elapsed_ms": 1500,
+          "limit_ms": 2000,
+          "status": "SATISFIED",
+          "message": "TEMPORAL CONSTRAINT SATISFIED: SensorAlert -> AuxiliaryPowerOnline elapsed 1500ms <= limit 2000ms"
+        }
+      ]
+    },
+    {
+      "event": "SystemStabilized",
+      "timestamp_ms": 4000,
+      "priority": 10,
+      "seq_id": 2,
+      "handler_executed": true,
+      "state_changes": [
+        {
+          "timestamp_ms": 4000,
+          "event": "SystemStabilized",
+          "variable": "gridActive",
+          "old_value": false,
+          "new_value": true
+        },
+        {
+          "timestamp_ms": 4000,
+          "event": "SystemStabilized",
+          "variable": "backupActive",
+          "old_value": true,
+          "new_value": false
+        },
+        {
+          "timestamp_ms": 4000,
+          "event": "SystemStabilized",
+          "variable": "powerLoad",
+          "old_value": 80,
+          "new_value": 100
+        }
+      ],
+      "temporal_checks": [
+        {
+          "source_event": "AuxiliaryPowerOnline",
+          "target_event": "SystemStabilized",
+          "source_timestamp_ms": 1500,
+          "target_timestamp_ms": 4000,
+          "elapsed_ms": 2500,
+          "limit_ms": 5000,
+          "status": "SATISFIED",
+          "message": "TEMPORAL CONSTRAINT SATISFIED: AuxiliaryPowerOnline -> SystemStabilized elapsed 2500ms <= limit 5000ms"
+        }
+      ]
+    }
+  ],
+  "state_transitions": [
+    {
+      "timestamp_ms": 0,
+      "event": "SensorAlert",
+      "variable": "gridActive",
+      "old_value": true,
+      "new_value": false
+    },
+    {
+      "timestamp_ms": 0,
+      "event": "SensorAlert",
+      "variable": "backupActive",
+      "old_value": false,
+      "new_value": true
+    },
+    {
+      "timestamp_ms": 0,
+      "event": "SensorAlert",
+      "variable": "powerLoad",
+      "old_value": 100,
+      "new_value": 50
+    },
+    {
+      "timestamp_ms": 1500,
+      "event": "AuxiliaryPowerOnline",
+      "variable": "powerLoad",
+      "old_value": 50,
+      "new_value": 80
+    },
+    {
+      "timestamp_ms": 4000,
+      "event": "SystemStabilized",
+      "variable": "gridActive",
+      "old_value": false,
+      "new_value": true
+    },
+    {
+      "timestamp_ms": 4000,
+      "event": "SystemStabilized",
+      "variable": "backupActive",
+      "old_value": true,
+      "new_value": false
+    },
+    {
+      "timestamp_ms": 4000,
+      "event": "SystemStabilized",
+      "variable": "powerLoad",
+      "old_value": 80,
+      "new_value": 100
+    }
+  ],
+  "temporal_checks": [
+    {
+      "source_event": "SensorAlert",
+      "target_event": "AuxiliaryPowerOnline",
+      "source_timestamp_ms": 0,
+      "target_timestamp_ms": 1500,
+      "elapsed_ms": 1500,
+      "limit_ms": 2000,
+      "status": "SATISFIED",
+      "message": "TEMPORAL CONSTRAINT SATISFIED: SensorAlert -> AuxiliaryPowerOnline elapsed 1500ms <= limit 2000ms"
+    },
+    {
+      "source_event": "AuxiliaryPowerOnline",
+      "target_event": "SystemStabilized",
+      "source_timestamp_ms": 1500,
+      "target_timestamp_ms": 4000,
+      "elapsed_ms": 2500,
+      "limit_ms": 5000,
+      "status": "SATISFIED",
+      "message": "TEMPORAL CONSTRAINT SATISFIED: AuxiliaryPowerOnline -> SystemStabilized elapsed 2500ms <= limit 5000ms"
+    }
+  ],
+  "summary": {
+    "total_events": 3,
+    "total_state_changes": 7,
+    "constraints_checked": 2,
+    "constraints_satisfied": 2,
+    "constraints_violated": 0,
+    "constraints_timeout": 0,
+    "success": true
+  }
+}

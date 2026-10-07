@@ -198,7 +198,9 @@ class SequentRuntime:
         # Sort events deterministically by timestamp
         timeline = sorted(event_timeline, key=lambda x: x[1])
 
-        for event_name, ts in timeline:
+        for item in timeline:
+            event_name = item[0]
+            ts = item[1]
             self.virtual_clock_ms = ts
 
             # 1. Evaluate temporal constraints against this event arrival

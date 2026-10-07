@@ -1,12 +1,13 @@
 """
 SEQUENT Compiler - Main Command-Line Interface Driver
 Entrypoint for compiling SEQUENT DSL source files, inspecting compiler stages,
-and running programs on the SEQUENT Virtual Machine.
+serializing bytecode (.seqc), and executing simulations on the SEQUENT Virtual Machine.
 """
 
 import argparse
-import sys
+import json
 from pathlib import Path
+import sys
 
 # Ensure UTF-8 output encoding across platforms
 if hasattr(sys.stdout, "reconfigure"):
@@ -22,16 +23,30 @@ from compiler.semantic_analyzer import SemanticAnalyzer, SemanticError
 from compiler.temporal_analyzer import TemporalAnalyzer, TemporalError
 from compiler.ir import IRGenerator, format_ir
 from compiler.ir_optimizer import IROptimizer, format_optimization_comparison
-from compiler.bytecode import BytecodeGenerator, format_bytecode
+from compiler.bytecode import BytecodeGenerator, format_bytecode, CompiledProgram
 from compiler.runtime import (
     SequentRuntime,
     format_runtime_log,
 )
+from compiler.simulator import (
+    DiscreteEventSimulator,
+    SimulationResult,
+)
+from compiler.serializer import (
+    BytecodeSerializer,
+    SerializationError,
+    save_seqc,
+    load_seqc,
+)
+from compiler.benchmark import run_benchmark
 from compiler import (
     parse_timeline_string,
+    resolve_events_timeline,
     extract_timeline_from_source,
     compile_source,
     execute_source,
+    simulate_source,
+    simulate_seqc,
 )
 
 
@@ -48,6 +63,48 @@ def print_tokens(tokens):
     print("============================================================\n")
 
 
+def process_seqc_file(
+    filepath: str,
+    show_bytecode: bool = False,
+    run_sim: bool = False,
+    events_spec: str = "",
+    json_output: bool = False,
+) -> int:
+    """Handles execution and inspection when the input file is a serialized .seqc binary file."""
+    try:
+        compiled_prog = load_seqc(filepath)
+    except Exception as e:
+        print(f"SERIALIZATION ERROR: Could not load '{filepath}': {e}", file=sys.stderr)
+        return 1
+
+    if show_bytecode:
+        print(format_bytecode(compiled_prog))
+        print()
+        return 0
+
+    # Determine timeline
+    timeline = []
+    if events_spec.strip():
+        timeline = resolve_events_timeline(events_spec)
+    elif compiled_prog.events:
+        t = 0
+        for ev in compiled_prog.events:
+            timeline.append((ev, t))
+            t += 1000
+
+    simulator = DiscreteEventSimulator(compiled_prog)
+    simulator.load_timeline(timeline)
+    result = simulator.run()
+
+    if json_output:
+        print(result.to_json(indent=2))
+    else:
+        print(result.format_display())
+        print()
+
+    return 0 if result.success else 2
+
+
 def compile_and_run_file(
     filepath: str,
     show_tokens: bool = False,
@@ -58,6 +115,9 @@ def compile_and_run_file(
     show_optimize: bool = False,
     show_bytecode: bool = False,
     run_vm: bool = False,
+    run_simulate: bool = False,
+    emit_seqc: bool = False,
+    run_bench: bool = False,
     events_spec: str = "",
     json_output: bool = False,
 ) -> int:
@@ -66,11 +126,27 @@ def compile_and_run_file(
         print(f"ERROR: File '{filepath}' not found.", file=sys.stderr)
         return 1
 
+    # Check for direct .seqc binary input
+    if path.suffix.lower() == ".seqc":
+        return process_seqc_file(
+            filepath=filepath,
+            show_bytecode=show_bytecode,
+            run_sim=(run_vm or run_simulate),
+            events_spec=events_spec,
+            json_output=json_output,
+        )
+
     try:
         source = path.read_text(encoding="utf-8")
     except Exception as e:
         print(f"ERROR: Could not read file '{filepath}': {e}", file=sys.stderr)
         return 1
+
+    # Optional Benchmark Mode
+    if run_bench:
+        bench_res = run_benchmark(source, compilation_rounds=50)
+        print(bench_res.format_display())
+        return 0
 
     # Stage 1: Lexical Analysis
     try:
@@ -151,11 +227,25 @@ def compile_and_run_file(
         print(format_bytecode(compiled_prog))
         print()
 
-    # Stage 8: VM Execution & Runtime Monitoring
-    if run_vm or json_output:
+    # Stage 8: Optional Bytecode Serialization (.seqc emission)
+    if emit_seqc:
+        out_seqc = path.with_suffix(".seqc")
+        bytes_written = save_seqc(compiled_prog, str(out_seqc))
+        print("============================================================")
+        print("            BYTECODE SERIALIZATION (.SEQC)                  ")
+        print("============================================================")
+        print(f"Target Output:      {out_seqc}")
+        print(f"Binary File Size:   {bytes_written:,} bytes")
+        print("Magic Header:       SEQC (Format Version 1)")
+        print("Integrity:          CRC32 Checksum Verified")
+        print("SERIALIZATION SUCCESSFUL")
+        print("============================================================\n")
+
+    # Stage 9: Simulation / VM Execution
+    if run_simulate or run_vm or json_output:
         # Determine event timeline
         if events_spec.strip():
-            timeline = parse_timeline_string(events_spec)
+            timeline = resolve_events_timeline(events_spec)
         else:
             timeline = extract_timeline_from_source(source)
             if not timeline and compiled_prog.events:
@@ -165,18 +255,20 @@ def compile_and_run_file(
                     timeline.append((ev, t))
                     t += 1000
 
-        runtime = SequentRuntime(compiled_prog)
-        exec_result = runtime.run_simulation(timeline)
+        # Execute using DiscreteEventSimulator (Phase 3 priority queue engine)
+        simulator = DiscreteEventSimulator(compiled_prog)
+        simulator.load_timeline(timeline)
+        sim_result = simulator.run()
 
         if json_output:
-            print(exec_result.to_json(indent=2))
+            print(sim_result.to_json(indent=2))
         else:
-            print(format_runtime_log(exec_result))
+            print(sim_result.format_display())
             print()
-        return 0 if exec_result.success else 2
+        return 0 if sim_result.success else 2
 
-    # Normal success summary when no specific display or run flag is requested
-    if not (show_tokens or show_ast or show_symbols or show_temporal or show_ir or show_optimize or show_bytecode):
+    # Normal success summary when no specific inspection or execution flag is passed
+    if not (show_tokens or show_ast or show_symbols or show_temporal or show_ir or show_optimize or show_bytecode or emit_seqc):
         print("LEXICAL ANALYSIS ✓")
         print("SYNTAX ANALYSIS ✓")
         print("AST CONSTRUCTION ✓")
@@ -192,12 +284,12 @@ def compile_and_run_file(
 
 def main():
     parser = argparse.ArgumentParser(
-        description="SEQUENT DSL Compiler & Virtual Machine - Phase 2 Core Implementation",
+        description="SEQUENT DSL Compiler, Virtual Machine & Simulator - Phase 3 Integrated System",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument(
         "file",
-        help="Path to the .seq source file to compile/run",
+        help="Path to the .seq source file or .seqc binary bytecode file",
     )
     parser.add_argument(
         "--tokens",
@@ -240,6 +332,26 @@ def main():
         help="Execute the program on the SEQUENT Virtual Machine",
     )
     parser.add_argument(
+        "--simulate",
+        action="store_true",
+        help="Execute the program using the Phase 3 Discrete-Event Simulator",
+    )
+    parser.add_argument(
+        "--emit-seqc",
+        action="store_true",
+        help="Compile and serialize bytecode to binary .seqc file",
+    )
+    parser.add_argument(
+        "--load-seqc",
+        action="store_true",
+        help="Explicitly indicate input file is a .seqc binary bytecode file",
+    )
+    parser.add_argument(
+        "--benchmark",
+        action="store_true",
+        help="Run performance benchmark (compilation rate & 1k/5k event simulation)",
+    )
+    parser.add_argument(
         "--events",
         type=str,
         default="",
@@ -262,6 +374,9 @@ def main():
         show_optimize=args.optimize,
         show_bytecode=args.bytecode,
         run_vm=args.run,
+        run_simulate=args.simulate,
+        emit_seqc=args.emit_seqc,
+        run_bench=args.benchmark,
         events_spec=args.events,
         json_output=args.json,
     )

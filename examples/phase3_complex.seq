@@ -1,0 +1,39 @@
+// SEQUENT Phase 3 - Complex Multi-State Reactive Controller
+// EVENTS: PeakTrafficDetected@0ms, PriorityLaneOpened@2500ms, PedestrianRequest@4000ms, NormalFlowRestored@8000ms
+system UrbanTrafficController {
+
+    state mainCorridorGreen = true
+    state priorityLaneActive = false
+    state pedestrianWalkActive = false
+    state congestionIndex = 1
+
+    event PeakTrafficDetected
+    event PriorityLaneOpened
+    event PedestrianRequest
+    event NormalFlowRestored
+
+    on PeakTrafficDetected {
+        congestionIndex = 4
+        priorityLaneActive = true
+    }
+
+    on PriorityLaneOpened {
+        congestionIndex = 3
+    }
+
+    on PedestrianRequest {
+        mainCorridorGreen = false
+        pedestrianWalkActive = true
+    }
+
+    on NormalFlowRestored {
+        mainCorridorGreen = true
+        priorityLaneActive = false
+        pedestrianWalkActive = false
+        congestionIndex = 1
+    }
+
+    constraint PeakTrafficDetected -> PriorityLaneOpened within 3s
+    constraint PriorityLaneOpened -> NormalFlowRestored within 10s
+    constraint PedestrianRequest -> NormalFlowRestored within 6s
+}

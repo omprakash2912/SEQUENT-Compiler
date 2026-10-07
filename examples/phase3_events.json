@@ -1,0 +1,6 @@
+[
+  {"event": "PeakTrafficDetected", "timestamp_ms": 0, "priority": 5},
+  {"event": "PriorityLaneOpened", "timestamp_ms": 2500, "priority": 5},
+  {"event": "PedestrianRequest", "timestamp_ms": 4000, "priority": 1},
+  {"event": "NormalFlowRestored", "timestamp_ms": 8000, "priority": 10}
+]

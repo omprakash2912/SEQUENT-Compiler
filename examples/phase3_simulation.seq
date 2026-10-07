@@ -1,0 +1,31 @@
+// SEQUENT Phase 3 - Discrete-Event Simulation Benchmark
+// EVENTS: SensorAlert@0ms, AuxiliaryPowerOnline@1500ms, SystemStabilized@4000ms
+system BuildingManagement {
+
+    state gridActive = true
+    state backupActive = false
+    state powerLoad = 100
+
+    event SensorAlert
+    event AuxiliaryPowerOnline
+    event SystemStabilized
+
+    on SensorAlert {
+        gridActive = false
+        backupActive = true
+        powerLoad = 50
+    }
+
+    on AuxiliaryPowerOnline {
+        powerLoad = 80
+    }
+
+    on SystemStabilized {
+        gridActive = true
+        backupActive = false
+        powerLoad = 100
+    }
+
+    constraint SensorAlert -> AuxiliaryPowerOnline within 2s
+    constraint AuxiliaryPowerOnline -> SystemStabilized within 5s
+}

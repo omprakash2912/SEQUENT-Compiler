@@ -1,0 +1,136 @@
+{
+  "system": "DefensePerimeter",
+  "simulation": {
+    "start_time_ms": 0,
+    "end_time_ms": 1000,
+    "duration_ms": 1000,
+    "total_events": 2,
+    "total_state_changes": 3
+  },
+  "initial_state": {
+    "threatLevel": 0,
+    "lockdown": false
+  },
+  "final_state": {
+    "threatLevel": 2,
+    "lockdown": true
+  },
+  "events": [
+    {
+      "event": "ThreatDetected",
+      "timestamp_ms": 0,
+      "priority": 10,
+      "seq_id": 0,
+      "handler_executed": true,
+      "state_changes": [
+        {
+          "timestamp_ms": 0,
+          "event": "ThreatDetected",
+          "variable": "threatLevel",
+          "old_value": 0,
+          "new_value": 3
+        },
+        {
+          "timestamp_ms": 0,
+          "event": "ThreatDetected",
+          "variable": "lockdown",
+          "old_value": false,
+          "new_value": true
+        }
+      ],
+      "temporal_checks": []
+    },
+    {
+      "event": "AlertBroadcast",
+      "timestamp_ms": 1000,
+      "priority": 10,
+      "seq_id": 1,
+      "handler_executed": true,
+      "state_changes": [
+        {
+          "timestamp_ms": 1000,
+          "event": "AlertBroadcast",
+          "variable": "threatLevel",
+          "old_value": 3,
+          "new_value": 2
+        }
+      ],
+      "temporal_checks": [
+        {
+          "source_event": "ThreatDetected",
+          "target_event": "AlertBroadcast",
+          "source_timestamp_ms": 0,
+          "target_timestamp_ms": 1000,
+          "elapsed_ms": 1000,
+          "limit_ms": 2000,
+          "status": "SATISFIED",
+          "message": "TEMPORAL CONSTRAINT SATISFIED: ThreatDetected -> AlertBroadcast elapsed 1000ms <= limit 2000ms"
+        },
+        {
+          "source_event": "AlertBroadcast",
+          "target_event": "CountermeasureDeployed",
+          "source_timestamp_ms": 1000,
+          "target_timestamp_ms": null,
+          "elapsed_ms": null,
+          "limit_ms": 5000,
+          "status": "TIMEOUT",
+          "message": "TEMPORAL CONSTRAINT VIOLATED (TIMEOUT): Target event 'CountermeasureDeployed' did not occur after source 'AlertBroadcast'"
+        }
+      ]
+    }
+  ],
+  "state_transitions": [
+    {
+      "timestamp_ms": 0,
+      "event": "ThreatDetected",
+      "variable": "threatLevel",
+      "old_value": 0,
+      "new_value": 3
+    },
+    {
+      "timestamp_ms": 0,
+      "event": "ThreatDetected",
+      "variable": "lockdown",
+      "old_value": false,
+      "new_value": true
+    },
+    {
+      "timestamp_ms": 1000,
+      "event": "AlertBroadcast",
+      "variable": "threatLevel",
+      "old_value": 3,
+      "new_value": 2
+    }
+  ],
+  "temporal_checks": [
+    {
+      "source_event": "ThreatDetected",
+      "target_event": "AlertBroadcast",
+      "source_timestamp_ms": 0,
+      "target_timestamp_ms": 1000,
+      "elapsed_ms": 1000,
+      "limit_ms": 2000,
+      "status": "SATISFIED",
+      "message": "TEMPORAL CONSTRAINT SATISFIED: ThreatDetected -> AlertBroadcast elapsed 1000ms <= limit 2000ms"
+    },
+    {
+      "source_event": "AlertBroadcast",
+      "target_event": "CountermeasureDeployed",
+      "source_timestamp_ms": 1000,
+      "target_timestamp_ms": null,
+      "elapsed_ms": null,
+      "limit_ms": 5000,
+      "status": "TIMEOUT",
+      "message": "TEMPORAL CONSTRAINT VIOLATED (TIMEOUT): Target event 'CountermeasureDeployed' did not occur after source 'AlertBroadcast'"
+    }
+  ],
+  "summary": {
+    "total_events": 2,
+    "total_state_changes": 3,
+    "constraints_checked": 2,
+    "constraints_satisfied": 1,
+    "constraints_violated": 0,
+    "constraints_timeout": 1,
+    "success": false
+  }
+}

@@ -1,0 +1,29 @@
+// SEQUENT Phase 3 - Temporal Constraint Timeout Demonstration
+// EVENTS: ThreatDetected@0ms, AlertBroadcast@1000ms
+// Notice: CountermeasureDeployed is never emitted, causing a TIMEOUT violation!
+system DefensePerimeter {
+
+    state threatLevel = 0
+    state lockdown = false
+
+    event ThreatDetected
+    event AlertBroadcast
+    event CountermeasureDeployed
+
+    on ThreatDetected {
+        threatLevel = 3
+        lockdown = true
+    }
+
+    on AlertBroadcast {
+        threatLevel = 2
+    }
+
+    on CountermeasureDeployed {
+        threatLevel = 0
+        lockdown = false
+    }
+
+    constraint ThreatDetected -> AlertBroadcast within 2s
+    constraint AlertBroadcast -> CountermeasureDeployed within 5s
+}

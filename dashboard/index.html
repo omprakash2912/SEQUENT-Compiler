@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SEQUENT | Web IDE & Compiler Dashboard</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link rel="alternate icon" type="image/x-icon" href="favicon.ico">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="ide-theme">
+  <!-- Top Application Header -->
+  <header class="ide-header">
+    <div class="header-brand">
+      <div class="brand-logo">
+        <svg class="logo-icon" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="16 18 22 12 16 6"></polyline>
+          <polyline points="8 6 2 12 8 18"></polyline>
+          <circle cx="12" cy="12" r="2.5"></circle>
+        </svg>
+        <span class="brand-title">SEQUENT</span>
+      </div>
+      <span class="version-badge">v3.0 IDE</span>
+      <span class="brand-desc">Temporal Event-Driven DSL Compiler &amp; Simulator</span>
+    </div>
+
+    <!-- Quick Example Selector -->
+    <div class="header-center">
+      <div class="example-picker-wrapper">
+        <label for="exampleSelect" class="picker-label">Sample:</label>
+        <select id="exampleSelect" class="example-dropdown" title="Select a pre-configured SEQUENT example">
+          <option value="" disabled selected>Loading examples...</option>
+        </select>
+        <button id="btnReloadExample" class="btn-icon" title="Reload current example source">↺</button>
+      </div>
+    </div>
+
+    <!-- Actions Toolbar -->
+    <div class="header-actions">
+      <button id="btnCompile" class="btn btn-action" title="Compile source across all 8 pipeline stages">
+        <span class="btn-icon-glyph">⚡</span> Compile
+      </button>
+      <button id="btnRun" class="btn btn-action" title="Run discrete-event simulation with configured timeline">
+        <span class="btn-icon-glyph">▶</span> Run
+      </button>
+      <button id="btnCompileRun" class="btn btn-primary" title="Compile and execute (Ctrl + Enter)">
+        <span class="btn-icon-glyph">⚡▶</span> Compile + Run
+      </button>
+
+      <div class="toolbar-divider"></div>
+
+      <button id="btnEmitSeqc" class="btn btn-outline" title="Serialize to binary bytecode (.seqc)">
+        <span class="btn-icon-glyph">💾</span> Emit .seqc
+      </button>
+
+      <label class="btn btn-outline btn-file-label" title="Load compiled binary container (.seqc)">
+        <span class="btn-icon-glyph">📦</span> Load .seqc
+        <input type="file" id="inputSeqcBinaryHeader" accept=".seqc,.seq" style="display:none;">
+      </label>
+
+      <label class="btn btn-outline btn-file-label" title="Load execution telemetry JSON file">
+        <span class="btn-icon-glyph">📊</span> Load Telemetry
+        <input type="file" id="inputTelemetryFile" accept=".json" style="display:none;">
+      </label>
+
+      <!-- Global Compiler Status Badge -->
+      <div id="globalStatusBadge" class="status-badge status-ready">READY</div>
+    </div>
+  </header>
+
+  <!-- Main IDE Workspace Layout -->
+  <div class="ide-workspace">
+    <!-- Left Sidebar: Stage Navigation & Examples List -->
+    <aside class="ide-sidebar">
+      <div class="sidebar-section">
+        <div class="sidebar-section-title">
+          <span>COMPILER PIPELINE</span>
+        </div>
+        <nav class="pipeline-nav">
+          <button class="stage-nav-btn active" data-stage="editor">
+            <span class="stage-status-icon" id="statusIcon-editor">✓</span>
+            <span class="stage-name">1. Source Editor</span>
+          </button>
+          <button class="stage-nav-btn" data-stage="lexer">
+            <span class="stage-status-icon" id="statusIcon-lexer">○</span>
+            <span class="stage-name">2. Lexer (Tokens)</span>
+          </button>
+          <button class="stage-nav-btn" data-stage="parser">
+            <span class="stage-status-icon" id="statusIcon-parser">○</span>
+            <span class="stage-name">3. Parser / AST</span>
+          </button>
+          <button class="stage-nav-btn" data-stage="symbols">
+            <span class="stage-status-icon" id="statusIcon-symbols">○</span>
+            <span class="stage-name">4. Symbol Table</span>
+          </button>
+          <button class="stage-nav-btn" data-stage="semantic">
+            <span class="stage-status-icon" id="statusIcon-semantic">○</span>
+            <span class="stage-name">5. Semantic Analysis</span>
+          </button>
+          <button class="stage-nav-btn" data-stage="temporal">
+            <span class="stage-status-icon" id="statusIcon-temporal">○</span>
+            <span class="stage-name">6. Temporal Analysis</span>
+          </button>
+          <button class="stage-nav-btn" data-stage="ir">
+            <span class="stage-status-icon" id="statusIcon-ir">○</span>
+            <span class="stage-name">7. Intermediate Rep. (IR)</span>
+          </button>
+          <button class="stage-nav-btn" data-stage="optimization">
+            <span class="stage-status-icon" id="statusIcon-optimization">○</span>
+            <span class="stage-name">8. IR Optimization</span>
+          </button>
+          <button class="stage-nav-btn" data-stage="bytecode">
+            <span class="stage-status-icon" id="statusIcon-bytecode">○</span>
+            <span class="stage-name">9. Bytecode Disassembly</span>
+          </button>
+          <button class="stage-nav-btn" data-stage="vm">
+            <span class="stage-status-icon" id="statusIcon-vm">○</span>
+            <span class="stage-name">10. Virtual Machine (VM)</span>
+          </button>
+          <button class="stage-nav-btn" data-stage="simulation">
+            <span class="stage-status-icon" id="statusIcon-simulation">○</span>
+            <span class="stage-name">11. Event Simulation</span>
+          </button>
+          <button class="stage-nav-btn" data-stage="verification">
+            <span class="stage-status-icon" id="statusIcon-verification">○</span>
+            <span class="stage-name">12. Temporal Verification</span>
+          </button>
+          <button class="stage-nav-btn" data-stage="timeline">
+            <span class="stage-status-icon" id="statusIcon-timeline">○</span>
+            <span class="stage-name">13. Visual Timeline</span>
+          </button>
+          <button class="stage-nav-btn" data-stage="transitions">
+            <span class="stage-status-icon" id="statusIcon-transitions">○</span>
+            <span class="stage-name">14. State Transitions</span>
+          </button>
+          <button class="stage-nav-btn" data-stage="telemetry">
+            <span class="stage-status-icon" id="statusIcon-telemetry">○</span>
+            <span class="stage-name">15. Telemetry JSON</span>
+          </button>
+          <button class="stage-nav-btn" data-stage="seqc">
+            <span class="stage-status-icon" id="statusIcon-seqc">○</span>
+            <span class="stage-name">16. .seqc Binary Container</span>
+          </button>
+        </nav>
+      </div>
+
+      <!-- Quick Metrics Summary Card -->
+      <div class="sidebar-section metrics-summary-section">
+        <div class="sidebar-section-title">
+          <span>ACTIVE SYSTEM</span>
+        </div>
+        <div class="active-system-card">
+          <div class="sys-card-row">
+            <span class="sys-label">System:</span>
+            <span id="sideSysName" class="sys-value">-</span>
+          </div>
+          <div class="sys-card-row">
+            <span class="sys-label">Virtual Span:</span>
+            <span id="sideSysSpan" class="sys-value">-</span>
+          </div>
+          <div class="sys-card-row">
+            <span class="sys-label">Events / Mut:</span>
+            <span id="sideSysCounts" class="sys-value">0 / 0</span>
+          </div>
+          <div class="sys-card-row">
+            <span class="sys-label">Constraints:</span>
+            <span id="sideSysConstraints" class="sys-value">-</span>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Center Panel: SEQUENT Source Editor & Event Timeline Input -->
+    <main class="ide-editor-panel" id="editorContainer">
+      <!-- Editor Header Tab Bar -->
+      <div class="editor-header">
+        <div class="editor-tabs">
+          <div class="editor-tab active">
+            <span class="tab-icon">📄</span>
+            <span id="activeFileName" class="tab-title">EmergencyResponse.seq</span>
+            <span id="dirtyIndicator" class="tab-dirty" title="Unsaved edits present"></span>
+          </div>
+        </div>
+        <div class="editor-tools">
+          <div class="dropdown-wrapper">
+            <button id="btnTemplatesDropdown" class="btn-tool btn-templates" title="Generate clean starter boilerplate">✨ Templates ▾</button>
+            <div id="templatesDropdownMenu" class="dropdown-menu-custom" style="display:none;">
+              <div class="dropdown-header">Insert Boilerplate Template</div>
+              <button class="dropdown-item-custom" data-template="emergency_response">🚨 Emergency Response System</button>
+              <button class="dropdown-item-custom" data-template="industrial_monitoring">🏭 Industrial Pressure Monitor</button>
+              <button class="dropdown-item-custom" data-template="smart_building">🏢 Smart Building Power Grid</button>
+              <button class="dropdown-item-custom" data-template="simple_timer">⏱️ Simple Timer System</button>
+              <button class="dropdown-item-custom" data-template="fault_detection">🛡️ Sensor Fault & Failsafe</button>
+            </div>
+          </div>
+          <button id="btnClearEditor" class="btn-tool" title="Clear editor content">Clear</button>
+          <button id="btnCopySource" class="btn-tool" title="Copy source code to clipboard">Copy</button>
+          <button id="btnDownloadSeq" class="btn-tool" title="Download current .seq file">Download .seq</button>
+        </div>
+      </div>
+
+      <!-- Code Editor with Synchronized Line Numbers & Highlight Overlay -->
+      <div class="code-editor-wrapper">
+        <div id="editorLineNumbers" class="line-numbers">1</div>
+        <div id="editorHighlightLayer" class="editor-highlight-layer" aria-hidden="true"></div>
+        <textarea id="sourceEditor" class="code-textarea" spellcheck="false" placeholder="Write SEQUENT source code here..."></textarea>
+      </div>
+
+      <!-- VS Code Style Diagnostics & Assistant Bottom Dock -->
+      <div class="editor-dock" id="editorDock">
+        <div class="dock-header">
+          <div class="dock-tabs">
+            <button class="dock-tab-btn active" id="tabBtnProblems" data-dock-tab="problems">
+              <span class="dock-tab-icon">⚠️</span>
+              <span class="dock-tab-title">Problems</span>
+              <span id="badgeProblemsCount" class="dock-badge dock-badge-clean">0</span>
+            </button>
+            <button class="dock-tab-btn" id="tabBtnAssistant" data-dock-tab="assistant">
+              <span class="dock-tab-icon">🤖</span>
+              <span class="dock-tab-title">SEQUENT Assistant</span>
+            </button>
+            <button class="dock-tab-btn" id="tabBtnTemplates" data-dock-tab="templates">
+              <span class="dock-tab-icon">✨</span>
+              <span class="dock-tab-title">Templates & Generator</span>
+            </button>
+          </div>
+          <div class="dock-actions">
+            <button id="btnToggleDock" class="dock-action-btn" title="Collapse / Expand Panel">▾</button>
+          </div>
+        </div>
+
+        <div class="dock-body" id="dockBody">
+          <!-- Panel: Problems -->
+          <div class="dock-panel active" id="dockPanelProblems">
+            <div id="problemsList" class="problems-list">
+              <div class="problems-empty">
+                <span class="check-icon">✓</span>
+                <span>No problems detected</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Panel: Assistant -->
+          <div class="dock-panel" id="dockPanelAssistant">
+            <div id="assistantContent" class="assistant-content">
+              <div class="assistant-card assistant-idle">
+                <div class="assistant-title-row">
+                  <div class="assistant-title"><span>🤖</span> SEQUENT Assistant Ready</div>
+                </div>
+                <div class="assistant-text">
+                  Compile or run your program to receive intelligent rule-based explanations, typo corrections, and automatic fixes.
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Panel: Templates -->
+          <div class="dock-panel" id="dockPanelTemplates">
+            <div class="templates-grid">
+              <div class="template-card" data-template="emergency_response">
+                <div class="template-card-header">
+                  <span class="template-icon">🚨</span>
+                  <div class="template-card-title">Emergency Response System</div>
+                  <span class="template-tag">Safety</span>
+                </div>
+                <p class="template-card-desc">Standard emergency dispatch coordinator with 5s and 30m response deadlines.</p>
+                <button class="btn btn-sm btn-template-insert" data-template="emergency_response">Insert Template</button>
+              </div>
+              <div class="template-card" data-template="industrial_monitoring">
+                <div class="template-card-header">
+                  <span class="template-icon">🏭</span>
+                  <div class="template-card-title">Industrial Monitoring System</div>
+                  <span class="template-tag">Process</span>
+                </div>
+                <p class="template-card-desc">Pressure safety system with automatic relief valve and stabilization monitoring.</p>
+                <button class="btn btn-sm btn-template-insert" data-template="industrial_monitoring">Insert Template</button>
+              </div>
+              <div class="template-card" data-template="smart_building">
+                <div class="template-card-header">
+                  <span class="template-icon">🏢</span>
+                  <div class="template-card-title">Smart Building System</div>
+                  <span class="template-tag">Infrastructure</span>
+                </div>
+                <p class="template-card-desc">Building power grid failover with auxiliary generator and grid restoration.</p>
+                <button class="btn btn-sm btn-template-insert" data-template="smart_building">Insert Template</button>
+              </div>
+              <div class="template-card" data-template="simple_timer">
+                <div class="template-card-header">
+                  <span class="template-icon">⏱️</span>
+                  <div class="template-card-title">Simple Timer System</div>
+                  <span class="template-tag">Utility</span>
+                </div>
+                <p class="template-card-desc">Discrete timer loop with periodic tick verification and expiration handler.</p>
+                <button class="btn btn-sm btn-template-insert" data-template="simple_timer">Insert Template</button>
+              </div>
+              <div class="template-card" data-template="fault_detection">
+                <div class="template-card-header">
+                  <span class="template-icon">🛡️</span>
+                  <div class="template-card-title">Fault Detection System</div>
+                  <span class="template-tag">Critical</span>
+                </div>
+                <p class="template-card-desc">Critical sensor fault detection, failsafe engagement, and diagnostic recovery.</p>
+                <button class="btn btn-sm btn-template-insert" data-template="fault_detection">Insert Template</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Event Timeline Configuration Bar -->
+      <div class="timeline-config-bar">
+        <div class="config-bar-header">
+          <span class="config-bar-title">⏱️ Event Simulation Timeline Specification:</span>
+          <span class="config-bar-hint">Comma-separated <code>Event@Time</code>, JSON string, or path to <code>.json</code> event file</span>
+        </div>
+        <div class="timeline-input-row">
+          <input type="text" id="timelineInput" class="timeline-input" placeholder="EmergencyDetected@0ms, TeamDispatched@3200ms, IncidentResolved@5000ms">
+          <button id="btnResetTimeline" class="btn btn-sm" title="Reset timeline to example defaults">Reset</button>
+        </div>
+      </div>
+    </main>
+
+    <!-- Right Panel: Multi-Stage Compiler Inspector -->
+    <section class="ide-inspector-panel" id="inspectorContainer">
+      <!-- Stage Header with Title & Stage Badge -->
+      <div class="inspector-header">
+        <div class="inspector-title-group">
+          <h2 id="inspectorStageTitle" class="inspector-title">Compiler Stage Inspection</h2>
+          <span id="inspectorStageSubtitle" class="inspector-subtitle">Select a stage on the left to inspect its output</span>
+        </div>
+        <div id="inspectorBadgeContainer">
+          <span id="inspectorStageBadge" class="status-badge status-neutral">Idle</span>
+        </div>
+      </div>
+
+      <!-- Persistent Error Banner -->
+      <div id="compilerErrorBanner" class="compiler-error-banner" style="display:none;">
+        <div class="error-banner-header">
+          <span class="error-icon">⚠️</span>
+          <strong id="errStageCategory">PARSER ERROR</strong>
+          <span id="errCoordinates" class="error-coords">Line 1, Column 1</span>
+        </div>
+        <div id="errMessage" class="error-banner-message">Error details will appear here.</div>
+      </div>
+
+      <!-- Stage Views Content Area -->
+      <div class="inspector-content">
+
+        <!-- Stage: Source Code Overview (when Editor stage is selected) -->
+        <div id="view-editor" class="stage-view active">
+          <div class="info-card">
+            <h3>📝 SEQUENT Domain-Specific Language Source</h3>
+            <p>Write your reactive system specifications in the center editor. SEQUENT models temporal events, deterministic state variables, reactive handlers, and strict duration bounds.</p>
+            <div class="shortcut-tip">
+              <strong>Keyboard Shortcut:</strong> Press <kbd>Ctrl</kbd> + <kbd>Enter</kbd> (or <kbd>Cmd</kbd> + <kbd>Enter</kbd>) to trigger instant <strong>Compile + Run</strong>.
+            </div>
+            <div class="quick-examples-box">
+              <h4>Available Demonstration Programs:</h4>
+              <ul class="example-quick-list" id="quickExamplesList">
+                <!-- Dynamically populated from /api/examples -->
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <!-- Stage: Lexer Tokens -->
+        <div id="view-lexer" class="stage-view">
+          <div class="view-toolbar">
+            <input type="text" id="tokenFilterInput" class="filter-input" placeholder="Filter tokens by type, lexeme, or value...">
+            <span id="tokenCountBadge" class="count-badge">0 tokens</span>
+          </div>
+          <div class="table-container">
+            <table class="data-table" id="tokensTable">
+              <thead>
+                <tr>
+                  <th style="width: 70px;">Line</th>
+                  <th style="width: 70px;">Col</th>
+                  <th style="width: 160px;">Token Type</th>
+                  <th>Lexeme</th>
+                  <th>Literal Value</th>
+                </tr>
+              </thead>
+              <tbody id="tokensTableBody">
+                <tr><td colspan="5" class="empty-state">Compile source to inspect token stream.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Stage: Parser / AST -->
+        <div id="view-parser" class="stage-view">
+          <div class="view-toolbar">
+            <div class="button-toggle-group">
+              <button id="btnAstViewTree" class="toggle-btn active">Visual Tree</button>
+              <button id="btnAstViewText" class="toggle-btn">Formatted Text</button>
+            </div>
+          </div>
+          <div id="astTreeContainer" class="ast-tree-container">
+            <div class="empty-state">Compile source to inspect the Abstract Syntax Tree.</div>
+          </div>
+          <pre id="astTextContainer" class="code-preview-block" style="display:none;">(No AST generated)</pre>
+        </div>
+
+        <!-- Stage: Symbol Table -->
+        <div id="view-symbols" class="stage-view">
+          <div class="sub-section">
+            <h4 class="sub-section-title">Declared State Variables</h4>
+            <div class="table-container">
+              <table class="data-table" id="symbolsStatesTable">
+                <thead>
+                  <tr>
+                    <th>Variable Name</th>
+                    <th>Inferred Type</th>
+                    <th>Initial Value</th>
+                    <th>Location</th>
+                  </tr>
+                </thead>
+                <tbody id="symbolsStatesBody">
+                  <tr><td colspan="4" class="empty-state">No states registered.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div class="sub-section">
+            <h4 class="sub-section-title">Declared System Events</h4>
+            <div class="table-container">
+              <table class="data-table" id="symbolsEventsTable">
+                <thead>
+                  <tr>
+                    <th>Event Identifier</th>
+                    <th>Location</th>
+                  </tr>
+                </thead>
+                <tbody id="symbolsEventsBody">
+                  <tr><td colspan="2" class="empty-state">No events registered.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Stage: Semantic Analysis -->
+        <div id="view-semantic" class="stage-view">
+          <div id="semanticStatusCard" class="info-card">
+            <div class="empty-state">Run compilation to perform semantic and scope validation.</div>
+          </div>
+        </div>
+
+        <!-- Stage: Temporal Analysis (Static) -->
+        <div id="view-temporal" class="stage-view">
+          <div class="table-container">
+            <table class="data-table" id="temporalStaticTable">
+              <thead>
+                <tr>
+                  <th>Source Event</th>
+                  <th>Target Event</th>
+                  <th>Raw Duration</th>
+                  <th>Normalized Limit</th>
+                  <th>Location</th>
+                  <th>Static Status</th>
+                </tr>
+              </thead>
+              <tbody id="temporalStaticBody">
+                <tr><td colspan="6" class="empty-state">No static temporal constraints defined.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Stage: IR -->
+        <div id="view-ir" class="stage-view">
+          <div class="table-container">
+            <table class="data-table" id="irTable">
+              <thead>
+                <tr>
+                  <th style="width: 50px;">Line</th>
+                  <th style="width: 170px;">IR OpCode</th>
+                  <th>Argument 1</th>
+                  <th>Argument 2</th>
+                  <th>Argument 3</th>
+                  <th>Comment</th>
+                </tr>
+              </thead>
+              <tbody id="irTableBody">
+                <tr><td colspan="6" class="empty-state">Compile source to inspect 3-address linear IR.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Stage: Optimization -->
+        <div id="view-optimization" class="stage-view">
+          <div class="optimization-metrics-card" id="optMetricsCard">
+            <div class="opt-metric">
+              <span class="opt-label">Initial Instructions</span>
+              <span id="optInitial" class="opt-value">-</span>
+            </div>
+            <div class="opt-metric">
+              <span class="opt-label">Final Instructions</span>
+              <span id="optFinal" class="opt-value">-</span>
+            </div>
+            <div class="opt-metric">
+              <span class="opt-label">Eliminated</span>
+              <span id="optEliminated" class="opt-value">-</span>
+            </div>
+            <div class="opt-metric opt-highlight">
+              <span class="opt-label">Reduction</span>
+              <span id="optReduction" class="opt-value">-</span>
+            </div>
+            <div class="opt-metric">
+              <span class="opt-label">Passes Run</span>
+              <span id="optPasses" class="opt-value">-</span>
+            </div>
+          </div>
+          <h4 class="sub-section-title">Before vs. After Optimization Comparison:</h4>
+          <pre id="optComparisonText" class="code-preview-block">(Run compilation to view IR optimization diff)</pre>
+        </div>
+
+        <!-- Stage: Bytecode Disassembly -->
+        <div id="view-bytecode" class="stage-view">
+          <div class="view-toolbar">
+            <span id="bcTotalBadge" class="count-badge">0 instructions</span>
+            <span id="bcHandlersBadge" class="count-badge">0 handlers</span>
+          </div>
+          <div class="table-container">
+            <table class="data-table" id="bytecodeTable">
+              <thead>
+                <tr>
+                  <th style="width: 70px;">Offset</th>
+                  <th style="width: 160px;">VM OpCode</th>
+                  <th>Operand</th>
+                  <th style="width: 80px;">Line</th>
+                  <th>Comment</th>
+                </tr>
+              </thead>
+              <tbody id="bytecodeTableBody">
+                <tr><td colspan="5" class="empty-state">Compile source to inspect generated bytecode.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Stage: VM Execution -->
+        <div id="view-vm" class="stage-view">
+          <pre id="vmExecutionLog" class="code-preview-block">(Execute program to view runtime VM step log)</pre>
+        </div>
+
+        <!-- Stage: Discrete-Event Simulation -->
+        <div id="view-simulation" class="stage-view">
+          <div class="info-card simulation-info-card">
+            <div class="sim-clock-header">
+              <span class="sim-badge">DETERMINISTIC VIRTUAL CLOCK</span>
+              <span class="sim-clock-desc">Integer millisecond ticks (zero wall-clock sleep)</span>
+            </div>
+            <div class="tie-breaking-box">
+              <strong>Deterministic Priority-Queue Tie-Breaking Policy:</strong>
+              <ol>
+                <li><strong>Timestamp (ms):</strong> Earliest scheduled virtual time processed first.</li>
+                <li><strong>Priority Integer:</strong> Lower integer = higher priority dispatched first.</li>
+                <li><strong>Sequence ID:</strong> Deterministic FIFO insertion order for equal timestamp &amp; priority.</li>
+              </ol>
+            </div>
+          </div>
+
+          <h4 class="sub-section-title">Simulation Event Dispatch Trace</h4>
+          <div class="table-container">
+            <table class="data-table" id="simTraceTable">
+              <thead>
+                <tr>
+                  <th>Virtual Time</th>
+                  <th>Event Name</th>
+                  <th>Priority</th>
+                  <th>Seq ID</th>
+                  <th>Handler Status</th>
+                  <th>Mutations Triggered</th>
+                </tr>
+              </thead>
+              <tbody id="simTraceBody">
+                <tr><td colspan="6" class="empty-state">Run simulation to inspect priority queue execution order.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Stage: Temporal Verification -->
+        <div id="view-verification" class="stage-view">
+          <div class="table-container">
+            <table class="data-table" id="verificationTable">
+              <thead>
+                <tr>
+                  <th>Source Event</th>
+                  <th>Target Event</th>
+                  <th>Source Time</th>
+                  <th>Target Time</th>
+                  <th>Elapsed Time</th>
+                  <th>Deadline Limit</th>
+                  <th>Verification Verdict</th>
+                </tr>
+              </thead>
+              <tbody id="verificationTableBody">
+                <tr><td colspan="7" class="empty-state">Run program to verify runtime temporal constraints.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Stage: Interactive SVG Timeline -->
+        <div id="view-timeline" class="stage-view">
+          <div class="timeline-viewport-wrapper">
+            <div class="timeline-legend">
+              <span class="legend-item"><span class="legend-dot dot-event"></span> Event Arrival</span>
+              <span class="legend-item"><span class="legend-line line-satisfied"></span> Satisfied (Δt ≤ D)</span>
+              <span class="legend-item"><span class="legend-line line-violated"></span> Violated (Δt > D)</span>
+              <span class="legend-item"><span class="legend-line line-timeout"></span> Timeout (Δt = ∞)</span>
+            </div>
+            <div class="svg-scroll-container">
+              <svg id="interactiveTimelineSvg" width="100%" height="240"></svg>
+            </div>
+          </div>
+        </div>
+
+        <!-- Stage: State Transitions History -->
+        <div id="view-transitions" class="stage-view">
+          <div class="view-toolbar">
+            <input type="text" id="stateFilterInput" class="filter-input" placeholder="Filter mutations by variable or event...">
+            <span id="stateCountBadge" class="count-badge">0 mutations</span>
+          </div>
+          <div class="table-container">
+            <table class="data-table" id="stateTransitionsTable">
+              <thead>
+                <tr>
+                  <th>Time (ms)</th>
+                  <th>Triggering Event</th>
+                  <th>Variable</th>
+                  <th>State Mutation (Old &rarr; New)</th>
+                </tr>
+              </thead>
+              <tbody id="stateTransitionsBody">
+                <tr><td colspan="4" class="empty-state">No state transitions recorded.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Stage: Telemetry JSON -->
+        <div id="view-telemetry" class="stage-view">
+          <!-- Upload Status Confirmation Card -->
+          <div id="telemetryLoadedCard" class="telemetry-loaded-card" style="display:none;">
+            <div class="card-icon">✓</div>
+            <div class="card-body">
+              <h4 class="card-title">TELEMETRY LOADED SUCCESSFULLY</h4>
+              <div class="card-details-grid">
+                <div><strong>Filename:</strong> <span id="telemetryFilename">-</span></div>
+                <div><strong>System:</strong> <span id="telemetrySystemName">-</span></div>
+                <div><strong>Events:</strong> <span id="telemetryEventCount">-</span></div>
+                <div><strong>State Changes:</strong> <span id="telemetryMutationCount">-</span></div>
+                <div><strong>Constraints:</strong> <span id="telemetryConstraintsStatus">-</span></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="view-toolbar">
+            <div class="button-toggle-group">
+              <button id="btnTelemetryFormatted" class="toggle-btn active">Formatted JSON</button>
+              <button id="btnTelemetryRaw" class="toggle-btn">Raw JSON</button>
+            </div>
+            <button id="btnCopyTelemetry" class="btn btn-sm">Copy Telemetry</button>
+            <button id="btnDownloadTelemetry" class="btn btn-sm">Download JSON</button>
+          </div>
+          <pre id="telemetryJsonDisplay" class="code-preview-block">(Run program or load a telemetry JSON file to view structured telemetry)</pre>
+        </div>
+
+        <!-- Stage: .seqc Binary Bytecode Inspector -->
+        <div id="view-seqc" class="stage-view">
+          <div class="seqc-inspector-grid">
+            <div class="seqc-field-card">
+              <span class="seqc-label">Magic Signature</span>
+              <span id="seqcMagic" class="seqc-value">b"SEQC" (0x53 0x45 0x51 0x43)</span>
+            </div>
+            <div class="seqc-field-card">
+              <span class="seqc-label">Format Version</span>
+              <span id="seqcVersion" class="seqc-value">1 (16-bit Big-Endian)</span>
+            </div>
+            <div class="seqc-field-card">
+              <span class="seqc-label">Flags</span>
+              <span id="seqcFlags" class="seqc-value">0x0000</span>
+            </div>
+            <div class="seqc-field-card">
+              <span class="seqc-label">Payload Length</span>
+              <span id="seqcPayloadLen" class="seqc-value">-</span>
+            </div>
+            <div class="seqc-field-card">
+              <span class="seqc-label">CRC32 Checksum</span>
+              <span id="seqcChecksum" class="seqc-value">-</span>
+            </div>
+            <div class="seqc-field-card">
+              <span class="seqc-label">Instructions Count</span>
+              <span id="seqcInstructions" class="seqc-value">-</span>
+            </div>
+            <div class="seqc-field-card">
+              <span class="seqc-label">System Name</span>
+              <span id="seqcSystemName" class="seqc-value">-</span>
+            </div>
+            <div class="seqc-field-card">
+              <span class="seqc-label">Handler Count</span>
+              <span id="seqcHandlers" class="seqc-value">-</span>
+            </div>
+          </div>
+
+          <div class="seqc-actions-row">
+            <button id="btnDownloadSeqcBinary" class="btn btn-primary" disabled>
+              💾 Download Compiled .seqc Binary
+            </button>
+            <label class="btn btn-outline btn-file-label">
+              ⚡ Load &amp; Execute .seqc Binary
+              <input type="file" id="inputSeqcBinary" accept=".seqc" style="display:none;">
+            </label>
+          </div>
+
+          <div class="info-card" style="margin-top: 1rem;">
+            <h4>Binary Format Specification (.seqc)</h4>
+            <p>SEQUENT implements a 16-byte fixed binary container header <code>[SEQC(4) | ver(2) | flags(2) | payload_len(4) | crc32(4)]</code>. The Virtual Machine verifies payload length and IEEE 802.3 CRC32 before executing, preventing execution of corrupted or tampered bytecode.</p>
+          </div>
+        </div>
+
+      </div>
+    </section>
+  </div>
+
+  <!-- Footer -->
+  <footer class="ide-footer">
+    <div class="footer-left">
+      <span>SEQUENT Compiler Design Laboratory &bull; Fall Semester 2026–27</span>
+      <span class="footer-sep">&bull;</span>
+      <span>Student: <strong>JEERU OMPRAKASH REDDY</strong> (24BKT0080)</span>
+    </div>
+    <div class="footer-right">
+      <span id="connectionStatusIndicator" class="conn-dot dot-online"></span>
+      <span id="connectionStatusText">Backend Online (localhost:8000)</span>
+    </div>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
